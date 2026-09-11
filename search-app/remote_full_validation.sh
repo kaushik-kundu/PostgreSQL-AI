@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# # Copyright © 2025, 2026 Oracle and/or its affiliates.
+# #
+# # This software is under the Apache License 2.0
+# # (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0) or Universal Permissive License
+# # (UPL) 1.0 (LICENSE-UPL or https://oss.oracle.com/licenses/upl), at your option.
+
 set -euo pipefail
 BASE="http://127.0.0.1:8000"
 COOKIE="/tmp/e2e_remote_full.cookie"
