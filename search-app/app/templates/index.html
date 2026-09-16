@@ -1468,7 +1468,6 @@
     let searchTimer = null;
     let searchMode = 'text';
     let state = { user: null, spaces: [], spaceId: null, role: 'user' };
-    let licensePromptUserId = null;
 
 
     const drEls = {
@@ -3011,13 +3010,6 @@
       renderSpaces();
       renderSqlMode();
 
-      // Show once per signed-in user during this browser page.
-      if (!state.user) {
-        licensePromptUserId = null;
-      } else if (licensePromptUserId !== state.user.id) {
-        licensePromptUserId = state.user.id;
-        window.alert('Click to accept the license agreement');
-      }
     }
 
     function renderSqlMode() {
