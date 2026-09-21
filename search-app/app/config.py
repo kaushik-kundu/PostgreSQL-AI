@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Mapping, Optional
 from pathlib import Path
+from urllib.parse import quote
 
 # Load environment variables from a .env file if present so `uv run searchapp` works without exporting vars
 try:
@@ -294,8 +295,10 @@ def build_database_url(s: Settings) -> str:
         raise RuntimeError(
             "Database configuration missing. Provide DATABASE_URL or DB_HOST/DB_NAME/DB_USER/DB_PASSWORD."
         )
+    db_user = quote(s.db_user, safe="")
+    db_password = quote(s.db_password, safe="")
     return (
-        f"postgresql://{s.db_user}:{s.db_password}@{s.db_host}:{s.db_port}/{s.db_name}"
+        f"postgresql://{db_user}:{db_password}@{s.db_host}:{s.db_port}/{s.db_name}"
         f"?sslmode={s.db_sslmode}"
     )
 
