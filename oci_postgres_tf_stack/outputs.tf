@@ -1,25 +1,17 @@
 # Copyright © 2025, 2026 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
-output  "psql_admin_pwd" { 
-  value      = local.psql_admin_password
-  sensitive  = true
+output "psql_admin_pwd" {
+  value     = local.psql_admin_password
+  sensitive = true
 }
 
-output "compute_instance_id" {
-  value = length(oci_core_instance.app_host) > 0 ? oci_core_instance.app_host[0].id : null
+output "bastion_id" {
+  value = oci_bastion_bastion.postgres.id
 }
 
-output "compute_state" {
-  value = length(oci_core_instance.app_host) > 0 ? oci_core_instance.app_host[0].state : null
-}
-
-output "compute_public_ip" {
-  value = length(data.oci_core_vnic.app_host_primary_vnic) > 0 ? data.oci_core_vnic.app_host_primary_vnic[0].public_ip_address : null
-}
-
-output "compute_private_ip" {
-  value = length(data.oci_core_vnic.app_host_primary_vnic) > 0 ? data.oci_core_vnic.app_host_primary_vnic[0].private_ip_address : null
+output "postgres_private_ip" {
+  value = oci_psql_db_system.psql_inst_1.network_details[0].primary_db_endpoint_private_ip
 }
 
 output "uploads_bucket_name" {

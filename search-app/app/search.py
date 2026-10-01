@@ -240,10 +240,18 @@ def rag(
             llm_ms = int(round((perf_counter() - llm_start) * 1000))
             logger.exception("RAG answer synthesis failed: %s", e)
         if not used_llm:
-            answer = (
-                "I found relevant sources, but the configured answer model is unavailable. "
-                "Verify that Ollama and the pinned local model are running, then try again."
-            )
+            if settings.llm_provider == "oci":
+                answer = (
+                    "I found relevant sources, but OCI Generative AI did not return an answer. "
+                    "Check the model identifier, region, and permissions, then try again."
+                )
+            elif settings.llm_provider == "ollama":
+                answer = (
+                    "I found relevant sources, but the configured answer model is unavailable. "
+                    "Verify that Ollama and the pinned local model are running, then try again."
+                )
+            else:
+                answer = "I found relevant sources, but the configured answer model did not return an answer."
 
     logger.info("rag: answer_chars=%d", len(answer or ''))
     if return_timings:

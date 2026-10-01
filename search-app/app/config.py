@@ -2,10 +2,11 @@
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 import os
+import secrets
 from dataclasses import dataclass
 from typing import Mapping, Optional
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 # Load environment variables from a .env file if present so `uv run searchapp` works without exporting vars
 try:
@@ -56,6 +57,15 @@ def _get_bool(env: str, default: bool = False) -> bool:
     return v.lower() in {"1", "true", "yes", "y", "on"}
 
 
+def _session_secret_key(environ: Optional[Mapping[str, str]] = None) -> str:
+    env = os.environ if environ is None else environ
+    configured = env.get("SECRET_KEY")
+    if configured and configured not in {"change-me", "GENERATE_A_LONG_RANDOM_VALUE", "REPLACE_WITH_RANDOM_SECRET"}:
+        return configured
+    # Workshop runs with one worker. Sessions already expire across app restarts.
+    return secrets.token_urlsafe(32)
+
+
 @dataclass(frozen=True)
 class Settings:
     # Server
@@ -87,7 +97,7 @@ class Settings:
     delete_uploaded_after_ingest: bool = _get_bool("DELETE_UPLOADED_FILES", False)
 
     # Auth/session
-    secret_key: str = os.getenv("SECRET_KEY", "change-me")
+    secret_key: str = _session_secret_key()
     session_cookie_name: str = os.getenv("SESSION_COOKIE_NAME", "searchapp_session")
     session_max_age_seconds: int = int(os.getenv("SESSION_MAX_AGE_SECONDS", "28800"))
     session_activity_ttl_seconds: int = int(os.getenv("SESSION_ACTIVITY_TTL_SECONDS", "28800"))
@@ -107,6 +117,8 @@ class Settings:
     database_url: Optional[str] = os.getenv("DATABASE_URL")
     db_host: Optional[str] = os.getenv("DB_HOST")
     db_port: int = int(os.getenv("DB_PORT", "5432"))
+    db_hostaddr: Optional[str] = os.getenv("DB_HOSTADDR")
+    db_sslrootcert: Optional[str] = os.getenv("DB_SSLROOTCERT")
     db_name: Optional[str] = os.getenv("DB_NAME")
     db_user: Optional[str] = os.getenv("DB_USER")
     db_password: Optional[str] = os.getenv("DB_PASSWORD")
@@ -297,9 +309,14 @@ def build_database_url(s: Settings) -> str:
         )
     db_user = quote(s.db_user, safe="")
     db_password = quote(s.db_password, safe="")
+    params = {"sslmode": s.db_sslmode}
+    if s.db_hostaddr:
+        params["hostaddr"] = s.db_hostaddr
+    if s.db_sslrootcert:
+        params["sslrootcert"] = s.db_sslrootcert
     return (
         f"postgresql://{db_user}:{db_password}@{s.db_host}:{s.db_port}/{s.db_name}"
-        f"?sslmode={s.db_sslmode}"
+        f"?{urlencode(params)}"
     )
 
 

@@ -132,6 +132,16 @@ class RagTests(unittest.TestCase):
         self.assertNotIn(body, answer)
         self.assertIn("answer model is unavailable", answer)
 
+    def test_rag_oci_failure_points_to_oci_configuration(self):
+        hits = [search.ChunkHit(1, 1, 0, "source text", distance=0.2)]
+        with patch.object(search, "settings", _rag_settings(llm_provider="oci")), patch.object(
+            search, "hybrid_search", return_value=hits
+        ), patch.object(search, "llm_chat", return_value=None):
+            answer, _, used = search.rag("question")
+        self.assertFalse(used)
+        self.assertIn("OCI Generative AI", answer)
+        self.assertNotIn("Ollama", answer)
+
     def test_rag_no_relevant_hits_skips_model(self):
         hits = [search.ChunkHit(1, 1, 0, "weak", distance=0.95)]
         with patch.object(search, "settings", _rag_settings()), patch.object(
