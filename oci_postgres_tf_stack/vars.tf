@@ -3,7 +3,7 @@
 
 variable "region" {
   type    = string
-  default = "us-ashburn-1"
+  default = "us-chicago-1"
 }
 
 variable "compartment_ocid" {
@@ -18,26 +18,13 @@ variable "tenancy_ocid" {
 
 ## Network
 
-variable "create_service_gateway" {
-  type    = bool
-  default = true
-}
-
-variable "create_vcn_subnet" {
-  type    = bool
-  default = true
-}
-
-variable "psql_subnet_ocid" {
-  type        = string
-  description = "Private Subnet OCID of existing subnet (used when create_vcn_subnet = false)"
-  default     = ""
-}
-
-variable "public_subnet_ocid" {
-  type        = string
-  description = "Public Subnet OCID to use for Compute when create_vcn_subnet = false. If empty, psql_subnet_ocid is used."
-  default     = ""
+variable "bastion_client_cidrs" {
+  type        = list(string)
+  description = "Required public source CIDRs for attendee SSH access to OCI Bastion. Use a narrow range when possible; 0.0.0.0/0 is a temporary fallback for networks with unknown or changing egress IPs."
+  validation {
+    condition     = length(var.bastion_client_cidrs) > 0 && alltrue([for cidr in var.bastion_client_cidrs : can(cidrhost(cidr, 0)) && cidr != "::/0"])
+    error_message = "Provide at least one valid attendee source CIDR."
+  }
 }
 
 variable "vcn_cidr" {
@@ -94,58 +81,6 @@ variable "psql_iops" {
 
 # variable "psql_passwd_type" { default = "PLAIN_TEXT" }
 
-## Compute (optional)
-
-variable "create_compute" {
-  type    = bool
-  default = false
-}
-
-variable "compute_shape" {
-  type    = string
-  default = "VM.Standard.E5.Flex"
-}
-
-variable "compute_ocpus" {
-  type    = number
-  default = 2
-}
-
-variable "compute_memory_in_gbs" {
-  type    = number
-  default = 16
-}
-
-variable "compute_assign_public_ip" {
-  type    = bool
-  default = false
-}
-
-variable "compute_display_name" {
-  type    = string
-  default = "app-host-1"
-}
-
-variable "compute_ssh_public_key" {
-  type    = string
-  default = ""
-}
-
-variable "compute_image_ocid" {
-  type    = string
-  default = ""
-}
-
-variable "compute_nsg_ids" {
-  type    = list(string)
-  default = []
-}
-
-variable "compute_boot_volume_size_in_gbs" {
-  type    = number
-  default = 250
-}
-
 ## Object Storage
 
 variable "object_storage_bucket_name" {
@@ -183,7 +118,7 @@ variable "psql_config_is_flexible" {
 variable "psql_config_compatible_shapes" {
   type        = list(string)
   description = "List of compatible shapes for the configuration"
-  default     = [
+  default = [
     "VM.Standard.E5.Flex",
     "VM.Standard.E6.Flex",
     "VM.Standard3.Flex"
@@ -206,7 +141,7 @@ variable "psql_config_description" {
 variable "psql_config_overrides" {
   type        = map(string)
   description = "Configuration overrides as key/value pairs"
-  default     = {
+  default = {
     "oci.admin_enabled_extensions" = "pg_stat_statements,pglogical,vector"
     "pglogical.conflict_log_level" = "debug1"
     "pg_stat_statements.max"       = "5000"

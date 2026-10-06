@@ -24,6 +24,22 @@ class DatabaseConfigTests(unittest.TestCase):
             "postgresql://app%40user:password%40with%3A%2F%3F%23%25@10.10.1.106:5432/postgres?sslmode=require",
         )
 
+    def test_bastion_tunnel_keeps_endpoint_hostname_for_tls(self) -> None:
+        settings = Settings(
+            db_host="postgres.example.oci.oraclecloud.com",
+            db_hostaddr="127.0.0.1",
+            db_port=15432,
+            db_name="postgres",
+            db_user="postgres",
+            db_password="secret",
+            db_sslmode="verify-full",
+            db_sslrootcert="/tmp/dbsystem.pub",
+        )
+        self.assertEqual(
+            build_database_url(settings),
+            "postgresql://postgres:secret@postgres.example.oci.oraclecloud.com:15432/postgres?sslmode=verify-full&hostaddr=127.0.0.1&sslrootcert=%2Ftmp%2Fdbsystem.pub",
+        )
+
     def test_build_database_url_preserves_explicit_database_url(self) -> None:
         database_url = "postgresql://provided:password@example.test:5432/provided"
         settings = Settings(database_url=database_url)

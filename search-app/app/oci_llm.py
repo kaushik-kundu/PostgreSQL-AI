@@ -279,7 +279,10 @@ def oci_chat_completion(question: str, context: str, max_tokens: int = 512, temp
             except Exception:
                 logger.info("OCI GenAI chat(): no text extracted; unable to introspect resp.data")
         except Exception as e:
-            logger.debug("OCI chat() path not available or failed: %s", e)
+            logger.warning(
+                "OCI GenAI chat() failed: %s (status=%s, code=%s)",
+                type(e).__name__, getattr(e, "status", None), getattr(e, "code", None),
+            )
 
         # Fallback to generate_text()
         try:
@@ -312,7 +315,10 @@ def oci_chat_completion(question: str, context: str, max_tokens: int = 512, temp
                 logger.info("OCI GenAI generate_text(): no text extracted; unable to introspect resp.data")
             return None
         except Exception as e:
-            logger.debug("OCI generate_text() path failed: %s", e)
+            logger.warning(
+                "OCI GenAI generate_text() failed: %s (status=%s, code=%s)",
+                type(e).__name__, getattr(e, "status", None), getattr(e, "code", None),
+            )
             return None
     except Exception as e:
         logger.exception("OCI GenAI call failed: %s", e)
