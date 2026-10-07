@@ -2,13 +2,15 @@
 
 This guide covers end‑to‑end deployment of the OCI PostgreSQL infrastructure and the FastAPI search application, including recommended configuration and runtime steps.
 
-## 1) Infrastructure (OCI PostgreSQL + Networking)
+## 1) Infrastructure (OCI PostgreSQL in existing networking)
 
 The Terraform stack in `oci_postgres_tf_stack/` provisions:
-- VCN + subnets + gateways
 - OCI PostgreSQL DB System (with pgvector enabled via app or config)
-- Optional Compute VM
-- Optional Object Storage bucket for uploads; the application does not use it unless explicitly configured
+- PostgreSQL configuration when enabled
+
+LiveLabs supplies the IPv4-only private subnet and optional NSGs. Provide their OCIDs even if they are in a shared compartment. `compartment_ocid` identifies the attendee database compartment. The network must allow only OCI-service egress and required private connectivity. Bastion is created separately and is needed for laptop access, not for database provisioning.
+
+Create a new stack for this revision. Updating an older stack that owns networking can delete its network/Bastion resources and replace the database; review any migration plan separately.
 
 ### Option A: Terraform CLI
 
@@ -20,8 +22,8 @@ cat > terraform.tfvars <<'EOF'
 compartment_ocid           = "ocid1.compartment.oc1..xxxx"
 region                     = "ap-sydney-1"
 psql_admin                 = "pgadmin"
-object_storage_bucket_name = "search-app-uploads"
-create_compute             = false
+psql_subnet_ocid           = "ocid1.subnet.oc1..xxxx"
+psql_nsg_ocids             = ["ocid1.networksecuritygroup.oc1..xxxx"]
 EOF
 
 terraform plan -out plan.out
@@ -30,7 +32,7 @@ terraform apply plan.out
 
 ### Option B: Oracle Resource Manager (ORM)
 - Create Stack → upload `oci_postgres_tf_stack` or Git ref.
-- Provide `compartment_ocid`, `psql_admin`, optional bucket name.
+- Provide `compartment_ocid`, `psql_admin`, and `psql_subnet_ocid`. Supply `psql_nsg_ocids` when LiveLabs provides NSGs; otherwise the subnet security lists must provide the required rules.
 - Run **Plan** then **Apply**.
 
 ## 2) Application Deployment (search-app)

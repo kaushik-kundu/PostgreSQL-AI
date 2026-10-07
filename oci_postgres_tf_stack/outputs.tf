@@ -6,15 +6,6 @@ output "psql_admin_pwd" {
   sensitive = true
 }
 
-output "bastion_id" {
-  value = oci_bastion_bastion.postgres.id
-}
-
 output "postgres_private_ip" {
   value = oci_psql_db_system.psql_inst_1.network_details[0].primary_db_endpoint_private_ip
-}
-
-output "uploads_bucket_name" {
-  value       = oci_objectstorage_bucket.uploads_bucket.name
-  description = "Object Storage bucket name for search-app uploads"
 }
