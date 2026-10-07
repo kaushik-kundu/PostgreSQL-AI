@@ -2,7 +2,7 @@ High-level overview
 
 - The repository provides two complementary stacks:
 
-  - Infrastructure: oci_postgres_tf_stack, a Terraform/Oracle Resource Manager (ORM) deployable module that provisions OCI networking, an OCI PostgreSQL DB System, optionally a Compute VM, and an Object Storage bucket for uploads.
+  - Infrastructure: oci_postgres_tf_stack, a Terraform/Oracle Resource Manager (ORM) deployable module that provisions an OCI PostgreSQL DB System and configuration in pre-existing private networking. Bastion is managed separately.
   - Application: search-app, a FastAPI service with a minimalist Jinja UI for document upload, ingestion (text extraction + chunking + embedding), and multi-mode retrieval (semantic with pgvector, full-text with PostgreSQL GIN, weighted hybrid RRF, and RAG using a local Ollama model by default). Security is via Basic Auth.
   - Application: search-app also includes SQL Search (NL2SQL), Search History audit logs, and Deep Research (DR) sessions with persistent memory.
 
@@ -12,11 +12,10 @@ Repo structure and roles
 
 - oci_postgres_tf_stack/: Terraform stack
 
-  - Provisions VCN/subnets, gateways, NSGs; an OCI PostgreSQL DB System; and optionally a Compute instance.
-  - vars.tf: Configurable inputs (region, compartment, networking toggles, PostgreSQL config, compute toggles, uploads bucket name).
+  - Provisions an OCI PostgreSQL DB System and optional configuration using existing subnet and NSG OCIDs.
+  - vars.tf: Configurable inputs for region, database compartment, existing private subnet/NSG OCIDs, and PostgreSQL.
   - psql.tf: OCI PostgreSQL resource including an attached configuration (supports enabling vector extension via config).
-  - compute.tf: Optional Compute VM (flex shape) with public IP configurable.
-  - Other tf files (availability_domains.tf, network.tf, provider.tf, etc.) wire up the full networking.
+  - network.tf: Documents the networking and Bastion prerequisites managed outside the stack.
 
 - search-app/: Application stack
 
@@ -164,9 +163,9 @@ Configuration and deployment
 
 - Infrastructure:
 
-  - Terraform/ORM stack provisions VCN, OCI PostgreSQL, optional Compute, and an Object Storage bucket.
-  - Variables control network creation or reuse, compute creation, and DB config (including a configuration that enables extensions).
-  - Outputs include compute_public_ip (if created), uploads_bucket_name, and psql_admin_pwd (sensitive).
+  - Terraform/ORM stack provisions OCI PostgreSQL in a LiveLabs-provided private subnet; networking and Bastion are managed separately.
+  - Variables select existing subnet/NSGs and control DB configuration (including extensions).
+  - Outputs include postgres_private_ip, psql_configuration_id, and psql_admin_pwd (sensitive).
 
 Security considerations
 
@@ -209,4 +208,4 @@ Roadmap
 - Add document deletion/listing endpoints and simple admin views.
 - Harden CORS, basic auth config, and secrets handling.
 - Add a quick CLI to ingest local folders for bulk tests.
-- Prepare a Terraform variable example and app systemd unit for the optional Compute instance.
+- Prepare attendee Terraform inputs for the existing private subnet and any assigned NSGs.

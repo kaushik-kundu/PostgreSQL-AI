@@ -20,9 +20,9 @@ resource "oci_psql_configuration" "psql_flex_config" {
     }
   }
 
-  db_version         = tostring(var.psql_version)
-  display_name       = var.psql_config_display_name
-  is_flexible        = var.psql_config_is_flexible
-  compatible_shapes  = var.psql_config_compatible_shapes
-  description        = var.psql_config_description
+  db_version        = tostring(var.psql_version)
+  display_name      = var.psql_config_display_name
+  is_flexible       = var.psql_config_is_flexible
+  compatible_shapes = var.psql_config_compatible_shapes
+  description       = var.psql_config_description
 }

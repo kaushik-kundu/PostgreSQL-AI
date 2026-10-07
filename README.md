@@ -3,10 +3,9 @@
 This repository contains two related stacks that together deliver an enterprise document search and RAG (Retrieval-Augmented Generation) experience on Oracle Cloud Infrastructure (OCI):
 
 1) `oci_postgres_tf_stack/` — Terraform/Resource Manager stack
-   - Provisions VCN + networking (private subnet for PostgreSQL, public subnet for Compute, NAT/Service Gateways, route tables, security lists/NSGs)
+   - Uses a LiveLabs-provided private subnet and optional NSGs, specified by OCID
    - Provisions an OCI PostgreSQL DB System (with pgvector support created by the app at runtime)
-   - Optional Compute instance (for hosting the app) in a public subnet
-   - Creates an Object Storage bucket for app uploads (configurable)
+   - Networking and Bastion are managed separately; the app runs on the attendee laptop
 
 2) `search-app/` — Application stack
    - FastAPI backend + minimalist Jinja UI
@@ -18,14 +17,15 @@ This repository contains two related stacks that together deliver an enterprise 
 
 
 ## Documentation Index
-- Terraform stack: [docs/oci_postgres_tf_stack/README.md](docs/oci_postgres_tf_stack/README.md)
+- Operator test network: [oci_workshop_network_tf_stack/README.md](oci_workshop_network_tf_stack/README.md)
+- Terraform stack: [oci_postgres_tf_stack/README.md](oci_postgres_tf_stack/README.md)
 - Application: [docs/search-app/README.md](docs/search-app/README.md)
 - Deployment: [DEPLOYMENT.md](DEPLOYMENT.md)
 - Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 
 ## Architecture Overview
-- Terraform provisions the network and OCI PostgreSQL. Optional compute can be created.
+- Terraform provisions OCI PostgreSQL and its configuration in pre-existing networking. Bastion is created separately by LiveLabs or an authorized user.
 - The app connects to OCI PostgreSQL and self‑manages schema and indexes on startup (CREATE IF NOT EXISTS).
 - Files uploaded via UI/API are saved by default under `$HOME/.oracle-livelabs/search-app/uploads/<user>/YYYY/MM/DD/HHMMSS/filename`. Existing directories and files are preserved. OCI Object Storage or S3 is contacted only when `STORAGE_BACKEND` explicitly enables it.
 
@@ -48,6 +48,10 @@ This repository contains two related stacks that together deliver an enterprise 
 ## Deploying the Infrastructure
 You can deploy the infrastructure in two ways: using Terraform CLI or Oracle Resource Manager (ORM).
 
+The subnet and NSGs may be in a shared compartment. Supply their OCIDs directly; `compartment_ocid` is the destination for your database. Your user needs permission to use the networking in its owning compartment. LiveLabs must configure IPv4-only private networking, OCI-service-only egress, and TCP 5432 access from Bastion before attendees connect.
+
+Use a new Resource Manager stack for this revision. Applying it to an older stack that owns networking will propose deleting the old network and Bastion resources and may replace the database. Review that migration separately.
+
 ### Option A: Terraform CLI
 Prerequisites: Terraform >= 1.5, OCI credentials configured in your environment.
 
@@ -63,10 +67,10 @@ compartment_ocid        = "ocid1.compartment.oc1..aaaa..."
 region                  = "ap-sydney-1"
 # PostgreSQL admin username (required)
 psql_admin              = "pgadmin"
-# Optional: predefine the uploads bucket name (else default 'search-app-uploads' is used)
-object_storage_bucket_name = "search-app-uploads"
-# Optional compute
-create_compute          = false
+# Existing private subnet supplied by LiveLabs (required)
+psql_subnet_ocid        = "ocid1.subnet.oc1..aaaa..."
+# Optional existing NSGs; use [] when LiveLabs relies on security lists
+psql_nsg_ocids          = ["ocid1.networksecuritygroup.oc1..aaaa..."]
 ```
 
 3) Plan and apply:
@@ -76,21 +80,21 @@ terraform apply plan.out
 ```
 
 4) Note the outputs:
-- `compute_public_ip` (if compute was created)
-- `uploads_bucket_name` (Object Storage bucket for app uploads)
+- `postgres_private_ip`
+- `psql_configuration_id`
 - `psql_admin_pwd` (sensitive)
 
-For production, set additional variables as needed (see [docs/oci_postgres_tf_stack/README.md](docs/oci_postgres_tf_stack/README.md)).
+For production, set additional variables as needed (see [oci_postgres_tf_stack/README.md](oci_postgres_tf_stack/README.md)).
 
 ### Option B: Oracle Resource Manager (ORM)
 1) Zip the Terraform stack directory or import it directly into ORM:
    - Console → Developer Services → Resource Manager → Stacks → Create Stack
    - Source: Upload zip or link to your Git repo snapshot containing `oci_postgres_tf_stack`
 2) Configure variables:
-   - Required: `compartment_ocid`, `psql_admin`
-   - Optional: `object_storage_bucket_name` (default `search-app-uploads`), compute vars
+   - Required: `compartment_ocid`, `psql_admin`, `psql_subnet_ocid`
+   - Optional: `psql_nsg_ocids`, existing PostgreSQL configuration, and DB sizing
 3) Plan and Apply.
-4) Use the Job outputs for bucket name and, if created, the compute instance information.
+4) Use the Job outputs for the PostgreSQL private IP and database administrator password. Create or select a Bastion separately, then create a port-forwarding session to that private IP on TCP 5432.
 
 
 ## Configuring and Running the Application
@@ -208,7 +212,7 @@ locked Python package.
 
 
 ## Typical End‑to‑End Flow
-1) Deploy infra with Terraform/ORM (optional compute)
+1) Deploy PostgreSQL with Terraform/ORM using the existing private subnet
 2) Configure app `.env` (DB + storage + RAG)
 3) Run app; upload PDFs/DOCX/TXT/HTML
 4) Use Search UI (hybrid/semantic/full‑text/RAG)

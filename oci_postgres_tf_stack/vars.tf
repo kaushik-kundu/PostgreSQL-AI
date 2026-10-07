@@ -7,7 +7,8 @@ variable "region" {
 }
 
 variable "compartment_ocid" {
-  type = string
+  type        = string
+  description = "Attendee compartment OCID for the PostgreSQL DB System and configuration; shared networking can be in another compartment."
 }
 
 variable "tenancy_ocid" {
@@ -18,18 +19,23 @@ variable "tenancy_ocid" {
 
 ## Network
 
-variable "bastion_client_cidrs" {
-  type        = list(string)
-  description = "Required public source CIDRs for attendee SSH access to OCI Bastion. Use a narrow range when possible; 0.0.0.0/0 is a temporary fallback for networks with unknown or changing egress IPs."
+variable "psql_subnet_ocid" {
+  type        = string
+  description = "OCID of the existing IPv4-only private subnet provided by LiveLabs. It may be in a different compartment from the DB System."
   validation {
-    condition     = length(var.bastion_client_cidrs) > 0 && alltrue([for cidr in var.bastion_client_cidrs : can(cidrhost(cidr, 0)) && cidr != "::/0"])
-    error_message = "Provide at least one valid attendee source CIDR."
+    condition     = startswith(var.psql_subnet_ocid, "ocid1.subnet.") && var.psql_subnet_ocid == trimspace(var.psql_subnet_ocid)
+    error_message = "Provide the existing private subnet OCID, without surrounding whitespace."
   }
 }
 
-variable "vcn_cidr" {
-  type    = list(string)
-  default = ["10.10.0.0/16"]
+variable "psql_nsg_ocids" {
+  type        = list(string)
+  description = "Existing PostgreSQL NSG OCIDs provided by LiveLabs, in the same VCN as the subnet. Leave empty only when LiveLabs supplies the required rules through subnet security lists."
+  default     = []
+  validation {
+    condition     = alltrue([for id in var.psql_nsg_ocids : startswith(id, "ocid1.networksecuritygroup.") && id == trimspace(id)])
+    error_message = "Each NSG value must be a network security group OCID without surrounding whitespace."
+  }
 }
 
 ## Credentials
@@ -80,14 +86,6 @@ variable "psql_iops" {
 }
 
 # variable "psql_passwd_type" { default = "PLAIN_TEXT" }
-
-## Object Storage
-
-variable "object_storage_bucket_name" {
-  type        = string
-  description = "Object Storage bucket name to create for search-app uploads"
-  default     = "search-app-uploads"
-}
 
 ## OCI PostgreSQL Configuration (optional)
 
